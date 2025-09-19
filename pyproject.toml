@@ -1,0 +1,14 @@
+[project]
+name = "orthogonal-alphas"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "matplotlib>=3.10.6",
+    "notebook>=7.4.5",
+    "numpy>=2.3.3",
+    "polars>=1.33.1",
+    "sf-quant>=0.1.11",
+    "torch>=2.8.0",
+    "tqdm>=4.67.1",
+]
+
