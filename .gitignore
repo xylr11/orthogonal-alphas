@@ -207,4 +207,4 @@ marimo/_lsp/
 __marimo__/
 
 # Prices data csv file
-assets_data.parquet
+asset_data.parquet
