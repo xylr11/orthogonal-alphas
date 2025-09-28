@@ -6,11 +6,14 @@ import polars as pl
 import datetime as dt
 import tqdm
 import argparse
+import os
 
-def get_signal_weights(df: pl.DataFrame, signal: str, start, end, write=False):
+def get_signal_weights(df: pl.DataFrame, signal: str, start, end, n_cpus=4, write=False):
     filtered = (
         df.filter(
-        (pl.col('date') >= start) & (pl.col('date') <= end)
+        (pl.col('date') >= start) &
+        (pl.col('date') <= end) &
+        (pl.col(f"{signal}_alpha").is_not_null())
         )
         .select(['date', 'barrid', f'{signal}_alpha', 'predicted_beta'
         ])
@@ -22,9 +25,19 @@ def get_signal_weights(df: pl.DataFrame, signal: str, start, end, write=False):
         sfo.UnitBeta()
     ]
 
-    weights = sfb.backtest_parallel(filtered.rename({f'{signal}_alpha': 'alpha'}), constraints, 2)
+    weights = sfb.backtest_parallel(filtered.rename({f'{signal}_alpha': 'alpha'}), constraints, 2, n_cpus=n_cpus)
 
-    if write: weights.write_parquet(f'{signal}_weights_{start}_{end}.parquet')
+    # Check nothing terrible has happened before writing
+
+    if weights.is_empty():
+        print(f"[WARNING] {signal} {start}–{end}: weights output is EMPTY")
+    else:
+        n_dates = weights.select(pl.col("date")).n_unique()
+        total_weight = weights.select(pl.col("weight")).sum().item()
+        print(f"[INFO] {signal} {start}–{end}: {n_dates} dates, total weight sum = {total_weight:.6f}")
+    
+
+    if write: weights.write_parquet(f'weights/{signal}_weights_{start}_{end}.parquet')
 
     return weights
 
@@ -45,12 +58,20 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    n_cpus = int(os.environ.get("SLURM_CPUS_PER_TASK", "1"))
+    print(f"Ray: Slurm allocated {n_cpus} CPUs")
+
     # Parse dates into datetime.date objects
     start = dt.date.fromisoformat(args.start)
+    print(f"Starting at {start}")
     end = dt.date.fromisoformat(args.end)
+    print(f"Ending at {end}")
 
     # Load parquet into polars DataFrame
+    print(f"Loading data from {args.parquet}")
     df = pl.read_parquet(args.parquet)
 
     # Run the signal weights calculation
-    weights = get_signal_weights(df, args.signal, start, end, write=args.write)
+    print(f"Starting MVO...")
+    weights = get_signal_weights(df, args.signal, start, end, n_cpus=min(8, n_cpus), write=args.write)
+    print("Done!")
