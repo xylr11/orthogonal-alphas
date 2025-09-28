@@ -8,7 +8,8 @@ import tqdm
 import argparse
 import os
 
-def get_signal_weights(df: pl.DataFrame, signal: str, start, end, n_cpus=4, write=False):
+def get_signal_weights(data_path: str, signal: str, start, end, n_cpus=8, write=False):
+    df = pl.scan_parquet(data_path)
     filtered = (
         df.filter(
         (pl.col('date') >= start) &
@@ -17,7 +18,12 @@ def get_signal_weights(df: pl.DataFrame, signal: str, start, end, n_cpus=4, writ
         )
         .select(['date', 'barrid', f'{signal}_alpha', 'predicted_beta'
         ])
+        .collect()
     )
+    if filtered.is_empty(): 
+        print("[WARNING] After filtering, input df was empty.")
+        return None
+
     constraints = [
         sfo.FullInvestment(),
         sfo.LongOnly(),
@@ -31,6 +37,7 @@ def get_signal_weights(df: pl.DataFrame, signal: str, start, end, n_cpus=4, writ
 
     if weights.is_empty():
         print(f"[WARNING] {signal} {start}–{end}: weights output is EMPTY")
+    
     else:
         n_dates = weights.select(pl.col("date")).n_unique()
         total_weight = weights.select(pl.col("weight")).sum().item()
@@ -69,9 +76,8 @@ if __name__ == '__main__':
 
     # Load parquet into polars DataFrame
     print(f"Loading data from {args.parquet}")
-    df = pl.read_parquet(args.parquet)
 
     # Run the signal weights calculation
     print(f"Starting MVO...")
-    weights = get_signal_weights(df, args.signal, start, end, n_cpus=min(8, n_cpus), write=args.write)
+    weights = get_signal_weights(args.parquet, args.signal, start, end, n_cpus=min(8, n_cpus), write=args.write)
     print("Done!")

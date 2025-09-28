@@ -3,9 +3,9 @@
 #SBATCH --output=logs/test_backtest_%A_%a.out
 #SBATCH --error=logs/test_backtest_%A_%a.err
 #SBATCH --array=0-5   # 6 tasks total
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=12G
-#SBATCH --time=00:40:00
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=16G
+#SBATCH --time=01:00:00
 #SBATCH --mail-user=kylecm11@byu.edu 
 #SBATCH --mail-type=BEGIN,END,FAIL 
 
