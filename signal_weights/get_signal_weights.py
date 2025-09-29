@@ -8,8 +8,7 @@ import tqdm
 import argparse
 import os
 
-def get_signal_weights(data_path: str, signal: str, start, end, n_cpus=8, write=False):
-    df = pl.scan_parquet(data_path)
+def get_signal_weights(df:pl.LazyFrame, signal: str, start, end, n_cpus=8, write=False):
     filtered = (
         df.filter(
         (pl.col('date') >= start) &
@@ -76,8 +75,9 @@ if __name__ == '__main__':
 
     # Load parquet into polars DataFrame
     print(f"Loading data from {args.parquet}")
+    df = pl.scan_parquet(args.parquet)
 
     # Run the signal weights calculation
     print(f"Starting MVO...")
-    weights = get_signal_weights(args.parquet, args.signal, start, end, n_cpus=min(8, n_cpus), write=args.write)
+    weights = get_signal_weights(df, args.signal, start, end, n_cpus=min(8, n_cpus), write=args.write)
     print("Done!")
