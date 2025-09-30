@@ -209,3 +209,7 @@ __marimo__/
 # Prices data csv file
 asset_data.parquet
 *.parquet
+
+# Supercomputing files
+*.out
+*.err
