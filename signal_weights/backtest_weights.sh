@@ -4,8 +4,8 @@
 #SBATCH --error=logs/backtest_%A_%a.err
 #SBATCH --array=0-89%30   # 90 tasks total, max 30 running at once
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=16G
-#SBATCH --time=01:00:00
+#SBATCH --mem=20G
+#SBATCH --time=02:00:00
 #SBATCH --mail-user=kylecm11@byu.edu 
 #SBATCH --mail-type=BEGIN,END,FAIL 
 
