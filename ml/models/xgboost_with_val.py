@@ -1,6 +1,6 @@
+from xgboost import XGBRegressor
 import polars as pl
 import numpy as np
-from sklearn.linear_model import Ridge
 from sklearn.metrics import r2_score
 from tqdm import tqdm
 
@@ -18,7 +18,7 @@ def make_lagged_features(
         new_features.extend([f"{c}_lag{lag}" for c in feature_cols])
     return feature_cols + new_features, out.drop_nulls()
 
-def rolling_ridge_with_val(
+def XGBoost_with_val(
     df: pl.DataFrame,
     feature_cols: list[str],
     target_col: str = "fwd_return",
@@ -36,7 +36,7 @@ def rolling_ridge_with_val(
     dates = df["date"].unique().sort().to_list()
     results = []
 
-    for i in tqdm(range(train_window, len(dates)), desc="Rolling Ridge"):
+    for i in tqdm(range(train_window, len(dates)), desc="Rolling XGBoost"):
         train_dates = dates[i - train_window:i]
         val_date = dates[i]
 
@@ -52,9 +52,18 @@ def rolling_ridge_with_val(
         X_val = val_df.select(feature_cols).to_numpy()
         y_val = val_df[target_col].to_numpy()
 
-        model = Ridge(alpha=alpha, fit_intercept=True)
+        model = XGBRegressor(
+            n_estimators=200,      # number of boosting rounds
+            learning_rate=0.1,     # step size shrinkage
+            max_depth=4,           # depth of trees
+            subsample=0.8,         # row subsampling
+            colsample_bytree=0.8,  # feature subsampling
+            reg_lambda=1.0,        # L2 regularization
+            tree_method="hist",    # fast histogram algorithm
+            n_jobs=-1,             # use all cores
+            random_state=42
+        )
         model.fit(X_train, y_train)
-
         y_val_hat = model.predict(X_val)
 
         val_r2 = r2_score(y_val, y_val_hat)
@@ -75,13 +84,13 @@ if __name__ == "__main__":
     df = pl.read_parquet("../../signal_weights/signal_data.parquet")
     df = df.with_columns(pl.col("return").shift(-1).alias("fwd_return"))
 
-    results = rolling_ridge_with_val(
+    results = XGBoost_with_val(
         df,
         feature_cols=["meanrev_alpha", "bab_alpha", "momentum_alpha"],
         target_col="fwd_return",
         lags=[5, 22],
         alpha=1e-2,
-        train_window=21,
+        train_window=1,
     )
     print(f"alpha=1e-2")
     print(results)
