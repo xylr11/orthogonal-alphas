@@ -45,7 +45,7 @@ weight_cols = [col for col in combined.columns if col not in ("date", "barrid")]
 combined = combined.rename({col: f"{col}_weight" for col in weight_cols})
 
 
-out_file = os.path.join(weights_dir, "all_weights_pivot.parquet")
+out_file = os.path.join(weights_dir, "updated_weights_pivot.parquet")
 combined.write_parquet(out_file)
 
 print(f"[INFO] Combined dataframe written to {out_file}")

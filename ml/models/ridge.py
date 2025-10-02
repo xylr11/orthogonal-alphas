@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.linear_model import Ridge
 from sklearn.metrics import r2_score
 from tqdm import tqdm
+import datetime as dt
 
 def make_lagged_features(
     df: pl.DataFrame,
@@ -16,7 +17,7 @@ def make_lagged_features(
             pl.col(c).shift(lag).alias(f"{c}_lag{lag}") for c in feature_cols
         ])
         new_features.extend([f"{c}_lag{lag}" for c in feature_cols])
-    return feature_cols + new_features, out.drop_nulls()
+    return feature_cols + new_features, out
 
 def rolling_ridge_with_val(
     df: pl.DataFrame,
@@ -32,6 +33,10 @@ def rolling_ridge_with_val(
     """
     if lags:
         feature_cols, df = make_lagged_features(df, feature_cols, lags)
+
+    df = df.filter(pl.col('date').gt(dt.date(2015, 1, 1)))
+    
+    df = df.drop_nulls()
 
     dates = df["date"].unique().sort().to_list()
     results = []
@@ -73,16 +78,24 @@ def rolling_ridge_with_val(
 
 if __name__ == "__main__":
     df = pl.read_parquet("../../signal_weights/signal_data.parquet")
-    df = df.with_columns(pl.col("return").shift(-1).alias("fwd_return"))
+    df = ( 
+        df.with_columns(
+            pl.col("return").shift(-1).alias("fwd_return")
+        )
+        .with_columns(
+            pl.col('market_cap').log().alias('log_cap')
+        )
+    )
 
     results = rolling_ridge_with_val(
         df,
-        feature_cols=["meanrev_alpha", "bab_alpha", "momentum_alpha"],
+        feature_cols=["meanrev_z", "bab_z", "momentum_z", 'price', 'specific_risk', 'log_cap'],
         target_col="fwd_return",
-        lags=[5, 22],
-        alpha=1e-2,
-        train_window=21,
+        lags=[22, 252],
+        alpha=1e-1,
+        train_window=1,
     )
-    print(f"alpha=1e-2")
+    print(f"alpha=1e-1")
+    print(f"train_window=5")
     print(results)
     print("mean corr:", results["val_corr"].mean())
