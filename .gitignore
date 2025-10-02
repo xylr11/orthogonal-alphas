@@ -213,3 +213,5 @@ asset_data.parquet
 # Supercomputing files
 *.out
 *.err
+
+*.png
