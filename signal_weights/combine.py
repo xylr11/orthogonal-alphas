@@ -10,7 +10,7 @@ if not files:
 dfs = []
 for f in files:
     basename = os.path.basename(f)
-    signal = basename.split("_")[0]  # e.g. momentum, meanrev, bab
+    signal = basename.split("_")[2]  # e.g. momentum, meanrev, bab
     
     # Key change: Select the columns and ADD a 'signal' column.
     # We keep the 'weight' column name consistent for now.
@@ -31,7 +31,7 @@ combined = (
     all_weights_stacked
     .pivot(
         index=["date", "barrid"],       # The join keys become the index
-        columns="signal",               # The signal column values become new column headers
+        on="signal",               # The signal column values become new column headers
         values="weight",                # The weight values populate the new columns
         aggregate_function=None,        # Use None since there's one weight per (date, barrid, signal)
     )
@@ -45,7 +45,7 @@ weight_cols = [col for col in combined.columns if col not in ("date", "barrid")]
 combined = combined.rename({col: f"{col}_weight" for col in weight_cols})
 
 
-out_file = os.path.join(weights_dir, "updated_weights_pivot.parquet")
+out_file = os.path.join(weights_dir, "low_vol_weights_pivot.parquet")
 combined.write_parquet(out_file)
 
 print(f"[INFO] Combined dataframe written to {out_file}")

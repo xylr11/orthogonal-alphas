@@ -1,16 +1,15 @@
 #!/bin/bash
-#SBATCH --job-name=backtest_signals
-#SBATCH --output=logs/backtest_%A_%a.out
-#SBATCH --error=logs/backtest_%A_%a.err
-#SBATCH --array=0-89%30   # 90 tasks total, max 30 running at once
+#SBATCH --job-name=bl_backtest
+#SBATCH --output=logs/bl_backtest_%A_%a.out
+#SBATCH --error=logs/bl_backtest_%A_%a.err
+#SBATCH --array=0-29
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=20G
 #SBATCH --time=02:00:00
 #SBATCH --mail-user=kylecm11@byu.edu 
 #SBATCH --mail-type=BEGIN,END,FAIL 
 
-DATASET="signal_data.parquet"
-signals=("momentum" "meanrev" "bab")
+DATASET="bl_returns_predbeta.parquet"
 
 # Year windows: [start, end] with no overlap
 year_starts=(
@@ -31,24 +30,19 @@ year_ends=(
   "2021-06-26" "2022-06-26" "2023-06-26" "2024-06-26" "2025-09-15"
 )
 
-num_signals=${#signals[@]}
 num_years=${#year_starts[@]}
-total_tasks=$((num_signals * num_years))
+total_tasks=$((num_years))
 
-# Check nothing terrible has happened
 if [ $SLURM_ARRAY_TASK_ID -ge $total_tasks ]; then
   echo "Task ID $SLURM_ARRAY_TASK_ID is out of range (max $((total_tasks-1)))."
   exit 1
 fi
 
-# Iterate through years and signals
-signal_index=$(( SLURM_ARRAY_TASK_ID / num_years ))
-year_index=$(( SLURM_ARRAY_TASK_ID % num_years ))
+year_index=$((SLURM_ARRAY_TASK_ID))
 
-signal=${signals[$signal_index]}
 start=${year_starts[$year_index]}
 end=${year_ends[$year_index]}
 
 source ../.venv/bin/activate
-echo "Running signal=$signal from $start to $end"
-srun python get_signal_weights.py "$DATASET" "$signal" "$start" "$end" --write
+echo "Running bl from $start to $end"
+srun python get_bl_weights.py "$DATASET" "$start" "$end" --write
